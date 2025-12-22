@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DorGPT: Wrapped & Unfiltered</title>
+  <meta name="description" content="A playful, browser-ready dashboard inspired by Dor's ChatGPT usage patterns." />
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.08);
+      --border: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.68);
+      --muted2: rgba(255,255,255,.55);
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --glow: 0 0 0 1px rgba(255,255,255,.08), 0 18px 60px rgba(0,0,0,.45);
+
+      --a: #62f6d2;  /* mint */
+      --b: #ff7ad9;  /* pink */
+      --c: #ffd166;  /* sand */
+      --d: #7aa7ff;  /* blue */
+      --e: #b9ff6a;  /* lime */
+
+      --r: 22px;
+      --r2: 16px;
+      --pad: clamp(14px, 1.3vw, 18px);
+      --gap: clamp(12px, 1.3vw, 16px);
+      --max: 1140px;
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 10% 10%, rgba(98,246,210,.14), transparent 55%),
+        radial-gradient(900px 700px at 90% 15%, rgba(255,122,217,.12), transparent 55%),
+        radial-gradient(900px 700px at 70% 90%, rgba(122,167,255,.10), transparent 55%),
+        radial-gradient(700px 600px at 15% 90%, rgba(255,209,102,.10), transparent 55%),
+        linear-gradient(180deg, #0b0f14 0%, #070a0e 100%);
+      overflow-x: hidden;
+    }
+
+    .wrap{
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 22px var(--pad) 80px;
+    }
+
+    /* Top bar */
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      position: sticky; top: 0;
+      padding: 14px 0 10px;
+      background: linear-gradient(180deg, rgba(11,15,20,.92), rgba(11,15,20,.35) 75%, transparent);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+    .brand{
+      display:flex; align-items:center; gap: 10px;
+      min-width: 240px;
+    }
+    .logo{
+      width: 36px; height: 36px; border-radius: 12px;
+      background:
+        radial-gradient(12px 12px at 25% 35%, var(--a), transparent 60%),
+        radial-gradient(14px 14px at 70% 25%, var(--b), transparent 60%),
+        radial-gradient(14px 14px at 62% 75%, var(--d), transparent 60%),
+        radial-gradient(16px 16px at 28% 78%, var(--c), transparent 60%),
+        rgba(255,255,255,.06);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 16px 40px rgba(0,0,0,.45);
+    }
+    .brand h1{
+      font-size: 14px; margin:0; letter-spacing:.2px; font-weight: 700;
+    }
+    .brand .sub{
+      font-size: 12px; color: var(--muted2); margin-top: 2px;
+    }
+
+    .controls{
+      display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    button, .chip{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 650;
+      letter-spacing: .2px;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
+    }
+    button:hover, .chip:hover{ transform: translateY(-1px); background: rgba(255,255,255,.085); border-color: rgba(255,255,255,.16); }
+    button:active, .chip:active{ transform: translateY(0px) scale(.99); }
+    button.primary{
+      background: linear-gradient(135deg, rgba(98,246,210,.18), rgba(122,167,255,.14));
+      border-color: rgba(98,246,210,.22);
+    }
+    button.warn{
+      background: linear-gradient(135deg, rgba(255,209,102,.18), rgba(255,122,217,.12));
+      border-color: rgba(255,209,102,.22);
+    }
+
+    /* Hero */
+    .hero{
+      border-radius: var(--r);
+      padding: clamp(18px, 2vw, 24px);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.035));
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .hero::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(500px 260px at 20% 0%, rgba(98,246,210,.18), transparent 60%),
+        radial-gradient(520px 300px at 85% 15%, rgba(255,122,217,.14), transparent 62%),
+        radial-gradient(540px 340px at 70% 95%, rgba(122,167,255,.12), transparent 62%);
+      pointer-events:none;
+      filter: blur(2px);
+      opacity: .95;
+    }
+    .hero-inner{ position: relative; display:grid; grid-template-columns: 1.25fr .75fr; gap: var(--gap); align-items: start; }
+    @media (max-width: 880px){
+      .hero-inner{ grid-template-columns: 1fr; }
+    }
+    .kicker{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
+    .pill{
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.16);
+      color: rgba(255,255,255,.80);
+    }
+    .hero h2{
+      margin: 4px 0 10px;
+      font-size: clamp(26px, 3.2vw, 40px);
+      letter-spacing: -.6px;
+      line-height: 1.08;
+    }
+    .hero p{
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+      max-width: 70ch;
+    }
+    .hero small{
+      display:block;
+      margin-top: 10px;
+      color: rgba(255,255,255,.50);
+      font-size: 12px;
+    }
+
+    .hero-cards{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .mini{
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 14px 14px 12px;
+      background: rgba(255,255,255,.055);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .mini .label{
+      font-size: 12px;
+      color: rgba(255,255,255,.62);
+      letter-spacing: .2px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .mini .value{
+      font-size: 18px;
+      font-weight: 800;
+      margin-top: 6px;
+      letter-spacing: -.3px;
+    }
+    .mini .hint{
+      font-size: 12px;
+      color: rgba(255,255,255,.55);
+      margin-top: 6px;
+      line-height: 1.45;
+    }
+
+    /* Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      margin-top: 12px;
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: clamp(14px, 1.6vw, 18px);
+      background: rgba(255,255,255,.05);
+      box-shadow: var(--glow);
+      position: relative;
+      overflow:hidden;
+    }
+    .card header{
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .card h3{
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: -.2px;
+    }
+    .card .meta{
+      color: var(--muted2);
+      font-size: 12px;
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+    .tagrow{
+      display:flex; gap: 8px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .tag{
+      font-size: 11px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.12);
+      color: rgba(255,255,255,.78);
+    }
+    .tag.work{ border-color: rgba(122,167,255,.22); }
+    .tag.creative{ border-color: rgba(255,122,217,.22); }
+    .tag.life{ border-color: rgba(255,209,102,.22); }
+    .tag.tools{ border-color: rgba(98,246,210,.22); }
+
+    .list{
+      display:grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .item{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding: 12px 12px;
+      display:flex;
+      gap: 10px;
+      align-items:flex-start;
+    }
+    .dot{
+      width: 10px; height: 10px; border-radius: 50%;
+      margin-top: 5px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 0 30px rgba(255,255,255,.06);
+    }
+    .dot.a{ background: var(--a); }
+    .dot.b{ background: var(--b); }
+    .dot.c{ background: var(--c); }
+    .dot.d{ background: var(--d); }
+    .dot.e{ background: var(--e); }
+
+    .item b{ display:block; font-size: 13px; margin-bottom: 2px; }
+    .item span{ display:block; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    /* Chips filter */
+    .filters{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      margin: 14px 0 2px;
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap: 8px;
+      font-size: 12px;
+    }
+    .chip .miniDot{ width: 9px; height: 9px; border-radius: 50%; }
+    .chip[data-filter="all"] .miniDot{ background: rgba(255,255,255,.65); }
+    .chip[data-filter="work"] .miniDot{ background: var(--d); }
+    .chip[data-filter="creative"] .miniDot{ background: var(--b); }
+    .chip[data-filter="life"] .miniDot{ background: var(--c); }
+    .chip[data-filter="tools"] .miniDot{ background: var(--a); }
+    .chip.active{
+      background: rgba(255,255,255,.10);
+      border-color: rgba(255,255,255,.20);
+    }
+
+    /* Gauges */
+    .gauges{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media (max-width: 560px){
+      .gauges{ grid-template-columns: 1fr; }
+    }
+    .gauge{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+      border-radius: 16px;
+      padding: 12px;
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    .gauge .gsvg{ width: 54px; height: 54px; flex: 0 0 auto; }
+    .gauge .glabel{ font-size: 12px; color: rgba(255,255,255,.62); }
+    .gauge .gvalue{ font-size: 16px; font-weight: 800; margin-top: 2px; letter-spacing: -.2px; }
+    .gauge .gsub{ font-size: 12px; color: rgba(255,255,255,.55); margin-top: 3px; line-height: 1.35; }
+
+    /* Accordion */
+    details{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+    details summary{
+      cursor:pointer;
+      list-style:none;
+      font-weight: 750;
+      font-size: 13px;
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+      color: rgba(255,255,255,.86);
+    }
+    details summary::-webkit-details-marker{ display:none; }
+    details[open]{ background: rgba(0,0,0,.14); }
+    .chev{
+      width: 18px; height: 18px; border-radius: 6px;
+      display:grid; place-items:center;
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.80);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .detailBody{
+      padding: 10px 0 0;
+      color: rgba(255,255,255,.70);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      max-width: min(680px, calc(100vw - 24px));
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.45);
+      color: rgba(255,255,255,.86);
+      font-size: 12px;
+      display:none;
+      z-index: 50;
+    }
+    .toast strong{ color: rgba(255,255,255,.95); }
+    .toast code{
+      font-family: var(--mono);
+      background: rgba(255,255,255,.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    /* Confetti canvas */
+    #fx{
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{ transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>DorGPT: Wrapped &amp; Unfiltered</h1>
+          <div class="sub">A playful mirror of how you think with AI (inferred, editable)</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="btnSpark">Spark ✨</button>
+        <button id="btnEdit">Edit Mode</button>
+        <button class="warn" id="btnReset">Reset</button>
+      </div>
+    </div>
+
+    <section class="hero" aria-label="Hero">
+      <div class="hero-inner">
+        <div>
+          <div class="kicker">
+            <span class="pill">Quiet Power • Thoughtful Builder</span>
+            <span class="pill">Work × Creative × Life</span>
+            <span class="pill" id="modePill">Mode: Inferred</span>
+          </div>
+
+          <h2 id="heroTitle">Dor × ChatGPT — The Thinking Companion Dashboard</h2>
+          <p id="heroSummary">
+            This dashboard captures how you use ChatGPT: to think, design, create, question, rehearse,
+            simplify, and sometimes just sit with uncertainty — faster and more clearly than alone.
+          </p>
+          <small>Note: These insights are based on observed patterns across your chats and saved memories. Toggle <b>Edit Mode</b> to customize everything.</small>
+
+          <div class="filters" role="tablist" aria-label="Filters">
+            <div class="chip active" data-filter="all" role="tab" tabindex="0">
+              <span class="miniDot"></span> All vibes
+            </div>
+            <div class="chip" data-filter="work" role="tab" tabindex="0">
+              <span class="miniDot"></span> Work
+            </div>
+            <div class="chip" data-filter="creative" role="tab" tabindex="0">
+              <span class="miniDot"></span> Creative
+            </div>
+            <div class="chip" data-filter="life" role="tab" tabindex="0">
+              <span class="miniDot"></span> Life
+            </div>
+            <div class="chip" data-filter="tools" role="tab" tabindex="0">
+              <span class="miniDot"></span> Tools
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-cards">
+          <div class="mini">
+            <div class="label">
+              <span>Power-user vibe</span>
+              <span class="pill" style="padding:6px 10px;">live</span>
+            </div>
+            <div class="value" id="vibeValue">High-taste + high iteration</div>
+            <div class="hint">You don’t “ask and accept.” You iterate until it sounds human, looks right, and fits real constraints.</div>
+          </div>
+
+          <div class="mini">
+            <div class="label">
+              <span>Primary use mode</span>
+              <span style="color: rgba(255,255,255,.55); font-size:12px;">(estimated)</span>
+            </div>
+            <div class="value" id="primaryMode">Co-designer &amp; co-writer</div>
+            <div class="hint">UX/instructional design + messaging polish + creative output (music/storytelling).</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Dashboard grid">
+      <!-- Card 1: Usage DNA -->
+      <article class="card filterable" data-tags="work creative tools">
+        <header>
+          <div>
+            <h3>Usage DNA</h3>
+            <div class="meta">How you tend to work with ChatGPT (patterns, not raw counts)</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag work">Work</span>
+            <span class="tag creative">Creative</span>
+            <span class="tag tools">Tools</span>
+          </div>
+        </header>
+
+        <div class="gauges">
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g1" cx="22" cy="22" r="18" fill="none" stroke="rgba(98,246,210,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="30"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Iteration intensity</div>
+              <div class="gvalue" id="g1v">84%</div>
+              <div class="gsub">You refine tone + structure until it “clicks”.</div>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g2" cx="22" cy="22" r="18" fill="none" stroke="rgba(255,122,217,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="44"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Creative density</div>
+              <div class="gvalue" id="g2v">72%</div>
+              <div class="gsub">Music prompts, storytelling, playful naming, vibe tuning.</div>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g3" cx="22" cy="22" r="18" fill="none" stroke="rgba(255,209,102,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="58"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Clarity chasing</div>
+              <div class="gvalue" id="g3v">62%</div>
+              <div class="gsub">You push toward “simple, clear, usable”.</div>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g4" cx="22" cy="22" r="18" fill="none" stroke="rgba(122,167,255,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="36"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Structure instinct</div>
+              <div class="gvalue" id="g4v">79%</div>
+              <div class="gsub">Workshops, modules, dashboards, flow diagrams.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="list" style="margin-top:12px;">
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Start broad → narrow → polish</b>
+              <span>First pass for structure. Second pass for taste. Third pass for human tone.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot d"></div>
+            <div>
+              <b>Real-world constraints matter</b>
+              <span>You design for actual use: trainees, emissaries, mobile devices, workshop logistics.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot b"></div>
+            <div>
+              <b>Creative meets systems</b>
+              <span>Music prompts + UX rigor + storytelling = your “hybrid engine.”</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 2: Signature Moves -->
+      <article class="card filterable" data-tags="creative work">
+        <header>
+          <div>
+            <h3>Signature Moves</h3>
+            <div class="meta">The stuff you do so often it’s basically your fingerprint</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag creative">Creative</span>
+            <span class="tag work">Work</span>
+          </div>
+        </header>
+
+        <div class="list">
+          <div class="item">
+            <div class="dot b"></div>
+            <div>
+              <b>The “Less AI-ish” Pass</b>
+              <span>Ask for humanization, tone correction, and modest confidence — until it reads like you.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot d"></div>
+            <div>
+              <b>Turn abstract → deliverable</b>
+              <span>You don’t stop at ideas. You want prompts, scripts, workshop plans, slides, flows.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Tool chaining</b>
+              <span>Suno / ElevenLabs / Mermaid / GitHub / mobile workflows — you build pipelines.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot c"></div>
+            <div>
+              <b>Strategic bilingual thinking</b>
+              <span>Hebrew for nuance and identity, English for structure, reach, and craft.</span>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:12px;">
+          <summary>
+            Bonus: “Dor Easter Egg” controls
+            <span class="chev">⌘</span>
+          </summary>
+          <div class="detailBody">
+            Press <code>D</code> for confetti. Press <code>/</code> to focus filters.
+            Click <b>Spark ✨</b> for a playful shuffle of phrases.
+          </div>
+        </details>
+      </article>
+
+      <!-- Card 3: Strengths -->
+      <article class="card filterable" data-tags="work creative">
+        <header>
+          <div>
+            <h3>Strengths You Demonstrate</h3>
+            <div class="meta">Not what you say you are — what your usage reveals</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag work">Work</span>
+            <span class="tag creative">Creative</span>
+          </div>
+        </header>
+
+        <div class="list">
+          <div class="item">
+            <div class="dot d"></div>
+            <div>
+              <b>Systems thinker with taste</b>
+              <span>You’re comfortable holding structure + vibe in the same hand.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Instructional clarity</b>
+              <span>You push toward practical, evidence-based, actually-usable training content.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot b"></div>
+            <div>
+              <b>Creative direction (music + story)</b>
+              <span>You specify mood, instrumentation, constraints — like a producer, not a gambler.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot c"></div>
+            <div>
+              <b>Emotional precision</b>
+              <span>You care about being kind, humble, and real — without losing authority.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 4: Highlights -->
+      <article class="card filterable" data-tags="work tools">
+        <header>
+          <div>
+            <h3>Highlights &amp; Milestones</h3>
+            <div class="meta">A mini timeline of “ChatGPT helped me ship this” energy</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag work">Work</span>
+            <span class="tag tools">Tools</span>
+          </div>
+        </header>
+
+        <div class="list">
+          <div class="item">
+            <div class="dot d"></div>
+            <div>
+              <b>Training + educational product design</b>
+              <span>Workshops, e-learning modules, facilitator scripts, and on-the-ground deliverables.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Prompted media workflows</b>
+              <span>Audio (ElevenLabs), music (Suno), diagrams (Mermaid), and “browser-first” building.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot c"></div>
+            <div>
+              <b>High-stakes writing</b>
+              <span>Messages, applications, and sensitive communication with a calm, human tone.</span>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:12px;">
+          <summary>
+            Want this to use real exported chat data?
+            <span class="chev">?</span>
+          </summary>
+          <div class="detailBody">
+            If you export your ChatGPT data (or paste a CSV summary), this dashboard can become “true stats”
+            (counts, topics over time, streaks, etc.). For now, it’s intentionally a pattern-based mirror.
+          </div>
+        </details>
+      </article>
+
+      <!-- Card 5: 2026 Predictions -->
+      <article class="card filterable" data-tags="life work creative">
+        <header>
+          <div>
+            <h3>Trends &amp; Gentle Predictions for 2026</h3>
+            <div class="meta">Forward-looking, calm, and based on your trajectory</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag life">Life</span>
+            <span class="tag work">Work</span>
+            <span class="tag creative">Creative</span>
+          </div>
+        </header>
+
+        <div class="list">
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Fewer chats, deeper outcomes</b>
+              <span>You’ll use ChatGPT more intentionally: fewer “tries”, more “builds”.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot d"></div>
+            <div>
+              <b>Productized content</b>
+              <span>Your training content will keep moving toward tools, templates, and scalable systems.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot b"></div>
+            <div>
+              <b>Creative output becomes a “public thing”</b>
+              <span>More shareable artifacts: songs, mini apps, interactive pages, portfolio experiments.</span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="dot c"></div>
+            <div>
+              <b>Confidence with softness</b>
+              <span>More authority, same kindness — your “gentle gravitas” continues.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // -------------------------
+    // State + helpers
+    // -------------------------
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    const state = {
+      filter: "all",
+      edit: false,
+      inferred: true,
+      heroTitle: "Dor × ChatGPT — The Thinking Companion Dashboard",
+      heroSummary:
+        "This dashboard captures how you use ChatGPT: to think, design, create, question, rehearse, simplify, and sometimes just sit with uncertainty — faster and more clearly than alone.",
+      vibeValue: "High-taste + high iteration",
+      primaryMode: "Co-designer & co-writer"
+    };
+
+    const toast = $("#toast");
+    function showToast(html, ms=2600){
+      toast.innerHTML = html;
+      toast.style.display = "block";
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.style.display = "none", ms);
+    }
+
+    // -------------------------
+    // Filtering
+    // -------------------------
+    const chips = $$(".chip");
+    const filterables = $$(".filterable");
+
+    function setFilter(next){
+      state.filter = next;
+      chips.forEach(c => c.classList.toggle("active", c.dataset.filter === next));
+      filterables.forEach(el => {
+        const tags = (el.dataset.tags || "").split(/\s+/).filter(Boolean);
+        const show = (next === "all") || tags.includes(next);
+        el.style.display = show ? "" : "none";
+      });
+      showToast(`<strong>Filter:</strong> ${next === "all" ? "All vibes" : next}`);
+    }
+
+    chips.forEach(ch => {
+      ch.addEventListener("click", () => setFilter(ch.dataset.filter));
+      ch.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          setFilter(ch.dataset.filter);
+        }
+      });
+    });
+
+    // Shortcut: "/" focuses filter row
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "/" && !state.edit){
+        e.preventDefault();
+        chips[0]?.focus();
+        showToast(`Tip: Use <code>Tab</code> then <code>Enter</code> to switch filters.`);
+      }
+    });
+
+    // -------------------------
+    // Gauges (stroke offset)
+    // dasharray = 2πr = 2π*18 ≈ 113.1
+    // offset = dasharray*(1 - pct)
+    // -------------------------
+    function setGauge(id, pct){
+      const circ = 113.1;
+      const off = circ * (1 - pct);
+      const el = document.getElementById(id);
+      if(el) el.style.strokeDashoffset = off.toFixed(1);
+    }
+    setGauge("g1", .84);
+    setGauge("g2", .72);
+    setGauge("g3", .62);
+    setGauge("g4", .79);
+
+    // -------------------------
+    // Spark: playful shuffle (non-destructive)
+    // -------------------------
+    const sparks = [
+      { vibe: "Modest confidence, maximum craft", mode: "Co-designer & co-strategist" },
+      { vibe: "Systems + soul + a dash of chaos", mode: "Thinking partner & creative director" },
+      { vibe: "High standards, kind delivery", mode: "UX mentor & tone polisher" },
+      { vibe: "Build-first brain (with taste)", mode: "Maker & messenger" },
+      { vibe: "Clarity hunter, vibe keeper", mode: "Educator & producer" }
+    ];
+
+    $("#btnSpark").addEventListener("click", () => {
+      const pick = sparks[Math.floor(Math.random() * sparks.length)];
+      $("#vibeValue").textContent = pick.vibe;
+      $("#primaryMode").textContent = pick.mode;
+      confettiBurst(80);
+      showToast(`✨ Sparked: <strong>${pick.vibe}</strong>`);
+    });
+
+    // -------------------------
+    // Edit mode: turn hero + mini values editable
+    // -------------------------
+    const modePill = $("#modePill");
+    function setEditMode(on){
+      state.edit = on;
+      $("#btnEdit").textContent = on ? "Done" : "Edit Mode";
+      modePill.textContent = on ? "Mode: Editing" : (state.inferred ? "Mode: Inferred" : "Mode: Custom");
+
+      const editable = [
+        ["#heroTitle", "heroTitle"],
+        ["#heroSummary", "heroSummary"],
+        ["#vibeValue", "vibeValue"],
+        ["#primaryMode", "primaryMode"],
+      ];
+
+      editable.forEach(([sel, key]) => {
+        const el = $(sel);
+        if(!el) return;
+        el.contentEditable = on ? "true" : "false";
+        el.spellcheck = false;
+        el.style.outline = on ? "2px dashed rgba(255,255,255,.22)" : "none";
+        el.style.padding = on ? "6px 8px" : "";
+        el.style.borderRadius = on ? "14px" : "";
+        el.addEventListener("input", () => {
+          state[key] = el.textContent.trim();
+          state.inferred = false;
+          modePill.textContent = "Mode: Custom";
+          persist();
+        });
+      });
+
+      showToast(on
+        ? `Edit mode on. Click text to edit. Press <code>Esc</code> to exit.`
+        : `Saved. Your dashboard is now <strong>custom</strong>.`
+      );
+
+      persist();
+    }
+
+    $("#btnEdit").addEventListener("click", () => setEditMode(!state.edit));
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && state.edit) setEditMode(false);
+    });
+
+    // -------------------------
+    // Persistence (localStorage)
+    // -------------------------
+    const KEY = "dorgpt_wrapped_state_v1";
+    function persist(){
+      const payload = {
+        inferred: state.inferred,
+        heroTitle: $("#heroTitle").textContent.trim(),
+        heroSummary: $("#heroSummary").textContent.trim(),
+        vibeValue: $("#vibeValue").textContent.trim(),
+        primaryMode: $("#primaryMode").textContent.trim()
+      };
+      localStorage.setItem(KEY, JSON.stringify(payload));
+    }
+
+    function restore(){
+      try{
+        const raw = localStorage.getItem(KEY);
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        if(data.heroTitle) $("#heroTitle").textContent = data.heroTitle;
+        if(data.heroSummary) $("#heroSummary").textContent = data.heroSummary;
+        if(data.vibeValue) $("#vibeValue").textContent = data.vibeValue;
+        if(data.primaryMode) $("#primaryMode").textContent = data.primaryMode;
+        state.inferred = !!data.inferred;
+        modePill.textContent = state.inferred ? "Mode: Inferred" : "Mode: Custom";
+        showToast(`Restored your last customizations ✅`);
+      }catch(_){}
+    }
+    restore();
+
+    $("#btnReset").addEventListener("click", () => {
+      localStorage.removeItem(KEY);
+      location.reload();
+    });
+
+    // -------------------------
+    // Confetti (tiny canvas)
+    // -------------------------
+    const fx = $("#fx");
+    const ctx = fx.getContext("2d");
+    let particles = [];
+
+    function resize(){
+      fx.width = window.innerWidth * devicePixelRatio;
+      fx.height = window.innerHeight * devicePixelRatio;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function rand(min, max){ return Math.random() * (max - min) + min; }
+
+    const palette = [
+      [98,246,210],
+      [255,122,217],
+      [255,209,102],
+      [122,167,255],
+      [185,255,106]
+    ];
+
+    function confettiBurst(count=120){
+      const x = fx.width * 0.5;
+      const y = fx.height * 0.22;
+      for(let i=0;i<count;i++){
+        const col = palette[Math.floor(Math.random()*palette.length)];
+        particles.push({
+          x, y,
+          vx: rand(-4.5, 4.5) * devicePixelRatio,
+          vy: rand(-7.5, -2.5) * devicePixelRatio,
+          g: rand(0.12, 0.22) * devicePixelRatio,
+          r: rand(2.0, 5.2) * devicePixelRatio,
+          a: 1,
+          rot: rand(0, Math.PI),
+          vr: rand(-0.18, 0.18),
+          col
+        });
+      }
+    }
+
+    function tick(){
+      ctx.clearRect(0,0,fx.width,fx.height);
+      particles = particles.filter(p => p.a > 0.02);
+      for(const p of particles){
+        p.vy += p.g;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        p.a *= 0.985;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = p.a;
+        ctx.fillStyle = `rgb(${p.col[0]},${p.col[1]},${p.col[2]})`;
+        ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r);
+        ctx.restore();
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    // Press "D" for confetti
+    document.addEventListener("keydown", (e) => {
+      if(e.key.toLowerCase() === "d" && !state.edit){
+        confettiBurst(160);
+        showToast(`Dor mode activated 🎉 (press <code>D</code> again for more)`);
+      }
+    });
+
+    // Initial friendly hint
+    setTimeout(() => {
+      showToast(`Tip: Click <strong>Edit Mode</strong> to customize. Press <code>D</code> for confetti.`);
+    }, 650);
+
+    // Default filter state
+    setFilter("all");
+  </script>
+</body>
+</html>
