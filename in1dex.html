@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DorGPT: Wrapped & Unfiltered — Real Stats Mode</title>
+  <meta name="description" content="A playful dashboard that can ingest ChatGPT export data locally in your browser." />
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.08);
+      --border: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.68);
+      --muted2: rgba(255,255,255,.55);
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --glow: 0 0 0 1px rgba(255,255,255,.08), 0 18px 60px rgba(0,0,0,.45);
+
+      --a: #62f6d2;  /* mint */
+      --b: #ff7ad9;  /* pink */
+      --c: #ffd166;  /* sand */
+      --d: #7aa7ff;  /* blue */
+      --e: #b9ff6a;  /* lime */
+
+      --r: 22px;
+      --r2: 16px;
+      --pad: clamp(14px, 1.3vw, 18px);
+      --gap: clamp(12px, 1.3vw, 16px);
+      --max: 1140px;
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 10% 10%, rgba(98,246,210,.14), transparent 55%),
+        radial-gradient(900px 700px at 90% 15%, rgba(255,122,217,.12), transparent 55%),
+        radial-gradient(900px 700px at 70% 90%, rgba(122,167,255,.10), transparent 55%),
+        radial-gradient(700px 600px at 15% 90%, rgba(255,209,102,.10), transparent 55%),
+        linear-gradient(180deg, #0b0f14 0%, #070a0e 100%);
+      overflow-x: hidden;
+    }
+
+    .wrap{
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 22px var(--pad) 84px;
+    }
+
+    /* Top bar */
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      position: sticky; top: 0;
+      padding: 14px 0 10px;
+      background: linear-gradient(180deg, rgba(11,15,20,.92), rgba(11,15,20,.35) 75%, transparent);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+    .brand{ display:flex; align-items:center; gap: 10px; min-width: 240px; }
+    .logo{
+      width: 36px; height: 36px; border-radius: 12px;
+      background:
+        radial-gradient(12px 12px at 25% 35%, var(--a), transparent 60%),
+        radial-gradient(14px 14px at 70% 25%, var(--b), transparent 60%),
+        radial-gradient(14px 14px at 62% 75%, var(--d), transparent 60%),
+        radial-gradient(16px 16px at 28% 78%, var(--c), transparent 60%),
+        rgba(255,255,255,.06);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 16px 40px rgba(0,0,0,.45);
+    }
+    .brand h1{ font-size: 14px; margin:0; letter-spacing:.2px; font-weight: 800; }
+    .brand .sub{ font-size: 12px; color: var(--muted2); margin-top: 2px; }
+
+    .controls{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    button, .chip{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: .2px;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
+      white-space: nowrap;
+    }
+    button:hover, .chip:hover{ transform: translateY(-1px); background: rgba(255,255,255,.085); border-color: rgba(255,255,255,.16); }
+    button:active, .chip:active{ transform: translateY(0px) scale(.99); }
+    button.primary{
+      background: linear-gradient(135deg, rgba(98,246,210,.18), rgba(122,167,255,.14));
+      border-color: rgba(98,246,210,.22);
+    }
+    button.warn{
+      background: linear-gradient(135deg, rgba(255,209,102,.18), rgba(255,122,217,.12));
+      border-color: rgba(255,209,102,.22);
+    }
+
+    /* Hero */
+    .hero{
+      border-radius: var(--r);
+      padding: clamp(18px, 2vw, 24px);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.035));
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .hero::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(500px 260px at 20% 0%, rgba(98,246,210,.18), transparent 60%),
+        radial-gradient(520px 300px at 85% 15%, rgba(255,122,217,.14), transparent 62%),
+        radial-gradient(540px 340px at 70% 95%, rgba(122,167,255,.12), transparent 62%);
+      pointer-events:none;
+      filter: blur(2px);
+      opacity: .95;
+    }
+    .hero-inner{ position: relative; display:grid; grid-template-columns: 1.25fr .75fr; gap: var(--gap); align-items: start; }
+    @media (max-width: 880px){ .hero-inner{ grid-template-columns: 1fr; } }
+    .kicker{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom: 10px; }
+    .pill{
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.16);
+      color: rgba(255,255,255,.80);
+    }
+    .hero h2{
+      margin: 4px 0 10px;
+      font-size: clamp(26px, 3.2vw, 40px);
+      letter-spacing: -.6px;
+      line-height: 1.08;
+    }
+    .hero p{
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+      max-width: 72ch;
+    }
+    .hero small{
+      display:block;
+      margin-top: 10px;
+      color: rgba(255,255,255,.50);
+      font-size: 12px;
+    }
+
+    .hero-cards{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .mini{
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 14px 14px 12px;
+      background: rgba(255,255,255,.055);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .mini .label{
+      font-size: 12px;
+      color: rgba(255,255,255,.62);
+      letter-spacing: .2px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .mini .value{
+      font-size: 18px;
+      font-weight: 900;
+      margin-top: 6px;
+      letter-spacing: -.3px;
+    }
+    .mini .hint{
+      font-size: 12px;
+      color: rgba(255,255,255,.55);
+      margin-top: 6px;
+      line-height: 1.45;
+    }
+
+    /* Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      margin-top: 12px;
+    }
+    @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: clamp(14px, 1.6vw, 18px);
+      background: rgba(255,255,255,.05);
+      box-shadow: var(--glow);
+      position: relative;
+      overflow:hidden;
+    }
+    .card header{
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .card h3{ margin: 0; font-size: 16px; letter-spacing: -.2px; }
+    .card .meta{ color: var(--muted2); font-size: 12px; margin-top: 3px; line-height: 1.35; }
+    .tagrow{ display:flex; gap: 8px; flex-wrap:wrap; justify-content:flex-end; }
+    .tag{
+      font-size: 11px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.12);
+      color: rgba(255,255,255,.78);
+    }
+    .tag.work{ border-color: rgba(122,167,255,.22); }
+    .tag.creative{ border-color: rgba(255,122,217,.22); }
+    .tag.life{ border-color: rgba(255,209,102,.22); }
+    .tag.tools{ border-color: rgba(98,246,210,.22); }
+
+    .list{ display:grid; gap: 10px; margin-top: 10px; }
+    .item{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding: 12px 12px;
+      display:flex;
+      gap: 10px;
+      align-items:flex-start;
+    }
+    .dot{ width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 0 30px rgba(255,255,255,.06);
+    }
+    .dot.a{ background: var(--a); }
+    .dot.b{ background: var(--b); }
+    .dot.c{ background: var(--c); }
+    .dot.d{ background: var(--d); }
+    .dot.e{ background: var(--e); }
+    .item b{ display:block; font-size: 13px; margin-bottom: 2px; }
+    .item span{ display:block; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    /* Chips filter */
+    .filters{ display:flex; gap: 10px; flex-wrap:wrap; margin: 14px 0 2px; }
+    .chip{ display:inline-flex; align-items:center; gap: 8px; font-size: 12px; }
+    .chip .miniDot{ width: 9px; height: 9px; border-radius: 50%; }
+    .chip[data-filter="all"] .miniDot{ background: rgba(255,255,255,.65); }
+    .chip[data-filter="work"] .miniDot{ background: var(--d); }
+    .chip[data-filter="creative"] .miniDot{ background: var(--b); }
+    .chip[data-filter="life"] .miniDot{ background: var(--c); }
+    .chip[data-filter="tools"] .miniDot{ background: var(--a); }
+    .chip.active{ background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.20); }
+
+    /* Gauges */
+    .gauges{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media (max-width: 560px){ .gauges{ grid-template-columns: 1fr; } }
+    .gauge{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+      border-radius: 16px;
+      padding: 12px;
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    .gauge .gsvg{ width: 54px; height: 54px; flex: 0 0 auto; }
+    .gauge .glabel{ font-size: 12px; color: rgba(255,255,255,.62); }
+    .gauge .gvalue{ font-size: 16px; font-weight: 900; margin-top: 2px; letter-spacing: -.2px; }
+    .gauge .gsub{ font-size: 12px; color: rgba(255,255,255,.55); margin-top: 3px; line-height: 1.35; }
+
+    details{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+    details summary{
+      cursor:pointer;
+      list-style:none;
+      font-weight: 800;
+      font-size: 13px;
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+      color: rgba(255,255,255,.86);
+    }
+    details summary::-webkit-details-marker{ display:none; }
+    details[open]{ background: rgba(0,0,0,.14); }
+    .chev{
+      width: 18px; height: 18px; border-radius: 6px;
+      display:grid; place-items:center;
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.80);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .detailBody{ padding: 10px 0 0; color: rgba(255,255,255,.70); font-size: 13px; line-height: 1.55; }
+
+    /* Charts */
+    .chartWrap{
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    canvas.chart{ width: 100%; height: 170px; display:block; }
+    .chartLegend{
+      display:flex; gap: 10px; flex-wrap:wrap; margin-top: 10px;
+      font-size: 12px; color: rgba(255,255,255,.62);
+    }
+    .swatch{
+      width: 10px; height: 10px; border-radius: 3px; display:inline-block; margin-right: 6px;
+      border: 1px solid rgba(255,255,255,.16);
+    }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      max-width: min(680px, calc(100vw - 24px));
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.45);
+      color: rgba(255,255,255,.86);
+      font-size: 12px;
+      display:none;
+      z-index: 50;
+    }
+    .toast strong{ color: rgba(255,255,255,.95); }
+    .toast code{
+      font-family: var(--mono);
+      background: rgba(255,255,255,.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    /* Confetti canvas */
+    #fx{ position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+
+    /* Import Modal */
+    .modalBackdrop{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      display:none;
+      z-index: 100;
+      padding: 18px;
+    }
+    .modal{
+      max-width: 820px;
+      margin: 6vh auto;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(11,15,20,.86);
+      box-shadow: 0 24px 90px rgba(0,0,0,.65);
+      overflow:hidden;
+    }
+    .modalHead{
+      padding: 16px 16px 12px;
+      display:flex; justify-content:space-between; align-items:flex-start; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    }
+    .modalHead h4{ margin: 0; font-size: 14px; letter-spacing: -.2px; }
+    .modalHead p{ margin: 6px 0 0; font-size: 12px; color: rgba(255,255,255,.62); line-height: 1.45; max-width: 70ch; }
+    .modalBody{ padding: 16px; display:grid; gap: 12px; }
+    .dropzone{
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(0,0,0,.20);
+      border-radius: 18px;
+      padding: 16px;
+      display:flex; gap: 14px; align-items:center; justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .dropzone strong{ font-size: 13px; }
+    .dropzone small{ display:block; margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.60); }
+    input[type="file"]{ display:none; }
+    .row{
+      display:flex; gap: 10px; flex-wrap:wrap;
+      align-items:center; justify-content:space-between;
+    }
+    .mono{
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(255,255,255,.70);
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      padding: 8px 10px;
+      overflow:auto;
+    }
+    .status{
+      font-size: 12px;
+      color: rgba(255,255,255,.65);
+      line-height: 1.5;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+
+  <!-- ZIP support (only needed if you upload the export .zip). If offline, upload conversations.json instead. -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <!-- Import Modal -->
+  <div class="modalBackdrop" id="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modalHead">
+        <div>
+          <h4 id="modalTitle">Real Stats Mode — Import your ChatGPT export</h4>
+          <p>
+            Upload your <b>ChatGPT export .zip</b> or a <b>conversations.json</b> file.
+            Parsing happens locally in your browser — nothing is uploaded anywhere.
+          </p>
+        </div>
+        <button id="btnCloseModal">Close</button>
+      </div>
+      <div class="modalBody">
+        <div class="dropzone" id="dropzone">
+          <div>
+            <strong>Drop file here</strong>
+            <small>Accepted: <span class="mono">.zip</span> or <span class="mono">conversations.json</span></small>
+          </div>
+          <div class="row">
+            <label for="filePick" class="chip" style="cursor:pointer;"><span class="miniDot" style="background:var(--a)"></span> Choose file</label>
+            <input id="filePick" type="file" accept=".zip,.json,application/json" />
+            <button class="primary" id="btnParse" disabled>Parse & Build</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="status" id="importStatus">No file selected yet.</div>
+          <div class="mono" id="fileMeta">—</div>
+        </div>
+
+        <details>
+          <summary>Where do I get the export? <span class="chev">?</span></summary>
+          <div class="detailBody">
+            In ChatGPT: <b>Settings → Data Controls → Export Data</b>.
+            You’ll receive a .zip. You can upload the zip here, or extract it and upload <code>conversations.json</code>.
+          </div>
+        </details>
+
+        <details>
+          <summary>Offline tip (no internet) <span class="chev">i</span></summary>
+          <div class="detailBody">
+            If your browser can’t load JSZip (CDN), just upload <code>conversations.json</code> (not zip).
+            That works fully offline.
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>DorGPT: Wrapped &amp; Unfiltered</h1>
+          <div class="sub" id="subline">Playful dashboard · now with Real Stats Mode</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="btnImport">Import Stats</button>
+        <button id="btnSpark">Spark ✨</button>
+        <button id="btnEdit">Edit Mode</button>
+        <button class="warn" id="btnReset">Reset</button>
+      </div>
+    </div>
+
+    <section class="hero" aria-label="Hero">
+      <div class="hero-inner">
+        <div>
+          <div class="kicker">
+            <span class="pill" id="themePill">Quiet Power • Thoughtful Builder</span>
+            <span class="pill" id="statsPill">Stats: Inferred</span>
+            <span class="pill" id="rangePill">Range: —</span>
+          </div>
+
+          <h2 id="heroTitle">Dor × ChatGPT — The Thinking Companion Dashboard</h2>
+          <p id="heroSummary">
+            This dashboard captures how you use ChatGPT: to think, design, create, question, rehearse,
+            simplify, and sometimes just sit with uncertainty — faster and more clearly than alone.
+          </p>
+          <small id="heroNote">Tip: click <b>Import Stats</b> to compute real numbers from your export. Edit Mode customizes text.</small>
+
+          <div class="filters" role="tablist" aria-label="Filters">
+            <div class="chip active" data-filter="all" role="tab" tabindex="0"><span class="miniDot"></span> All vibes</div>
+            <div class="chip" data-filter="work" role="tab" tabindex="0"><span class="miniDot"></span> Work</div>
+            <div class="chip" data-filter="creative" role="tab" tabindex="0"><span class="miniDot"></span> Creative</div>
+            <div class="chip" data-filter="life" role="tab" tabindex="0"><span class="miniDot"></span> Life</div>
+            <div class="chip" data-filter="tools" role="tab" tabindex="0"><span class="miniDot"></span> Tools</div>
+          </div>
+        </div>
+
+        <div class="hero-cards">
+          <div class="mini">
+            <div class="label">
+              <span>Power-user vibe</span>
+              <span class="pill" style="padding:6px 10px;" id="vibeBadge">live</span>
+            </div>
+            <div class="value" id="vibeValue">High-taste + high iteration</div>
+            <div class="hint" id="vibeHint">Import your export to generate this from your real messages.</div>
+          </div>
+
+          <div class="mini">
+            <div class="label">
+              <span>Primary use mode</span>
+              <span style="color: rgba(255,255,255,.55); font-size:12px;" id="primarySub">(estimated)</span>
+            </div>
+            <div class="value" id="primaryMode">Co-designer &amp; co-writer</div>
+            <div class="hint" id="primaryHint">Work + creative + tool-chaining.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Dashboard grid">
+      <!-- Card 1 -->
+      <article class="card filterable" data-tags="work creative tools">
+        <header>
+          <div>
+            <h3>Usage DNA</h3>
+            <div class="meta">Now supports real counts + trends from your export</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag work">Work</span>
+            <span class="tag creative">Creative</span>
+            <span class="tag tools">Tools</span>
+          </div>
+        </header>
+
+        <div class="gauges">
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g1" cx="22" cy="22" r="18" fill="none" stroke="rgba(98,246,210,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="50"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Iteration intensity</div>
+              <div class="gvalue" id="g1v">—</div>
+              <div class="gsub" id="g1s">Average turns per conversation (normalized).</div>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g2" cx="22" cy="22" r="18" fill="none" stroke="rgba(255,122,217,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="60"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Creative density</div>
+              <div class="gvalue" id="g2v">—</div>
+              <div class="gsub" id="g2s">Share of messages matching creative signals.</div>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g3" cx="22" cy="22" r="18" fill="none" stroke="rgba(255,209,102,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="72"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Clarity chasing</div>
+              <div class="gvalue" id="g3v">—</div>
+              <div class="gsub" id="g3s">Rewrite / simplify / explain requests.</div>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <svg class="gsvg" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="4"></circle>
+              <circle id="g4" cx="22" cy="22" r="18" fill="none" stroke="rgba(122,167,255,.95)" stroke-linecap="round" stroke-width="4"
+                      stroke-dasharray="113.1" stroke-dashoffset="56"></circle>
+            </svg>
+            <div>
+              <div class="glabel">Structure instinct</div>
+              <div class="gvalue" id="g4v">—</div>
+              <div class="gsub" id="g4s">Workshops/modules/flows/templates signals.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chartWrap">
+          <canvas class="chart" id="timelineChart" width="900" height="240" aria-label="Timeline chart"></canvas>
+          <div class="chartLegend">
+            <span><span class="swatch" style="background: rgba(98,246,210,.85)"></span>Messages / month</span>
+            <span><span class="swatch" style="background: rgba(255,122,217,.75)"></span>User share</span>
+          </div>
+        </div>
+
+        <div class="list" id="dnaFacts">
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Import to populate real stats</b>
+              <span>Once you import, this section turns into actual computed insights.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 2 -->
+      <article class="card filterable" data-tags="creative work">
+        <header>
+          <div>
+            <h3>Signature Moves</h3>
+            <div class="meta">Generated from your real phrases + recurring intents</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag creative">Creative</span>
+            <span class="tag work">Work</span>
+          </div>
+        </header>
+
+        <div class="list" id="signatureList">
+          <div class="item">
+            <div class="dot b"></div>
+            <div>
+              <b>Waiting for data…</b>
+              <span>Import your export to generate your top “signature requests” (rewrite, tone, constraints, tools, etc.).</span>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:12px;">
+          <summary>
+            Easter Egg controls
+            <span class="chev">⌘</span>
+          </summary>
+          <div class="detailBody">
+            Press <code>D</code> for confetti. Press <code>/</code> to focus filters. Click <b>Spark ✨</b> for playful vibe shuffle.
+          </div>
+        </details>
+      </article>
+
+      <!-- Card 3 -->
+      <article class="card filterable" data-tags="work creative">
+        <header>
+          <div>
+            <h3>Key Stats</h3>
+            <div class="meta">The “power user” numbers (real once imported)</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag work">Work</span>
+            <span class="tag creative">Creative</span>
+          </div>
+        </header>
+
+        <div class="list" id="keyStats">
+          <div class="item"><div class="dot d"></div><div><b>Total conversations</b><span id="st_convos">—</span></div></div>
+          <div class="item"><div class="dot a"></div><div><b>Total messages</b><span id="st_msgs">—</span></div></div>
+          <div class="item"><div class="dot b"></div><div><b>User vs assistant</b><span id="st_ratio">—</span></div></div>
+          <div class="item"><div class="dot c"></div><div><b>Estimated words typed</b><span id="st_words">—</span></div></div>
+          <div class="item"><div class="dot e"></div><div><b>Active days</b><span id="st_days">—</span></div></div>
+        </div>
+      </article>
+
+      <!-- Card 4 -->
+      <article class="card filterable" data-tags="work tools">
+        <header>
+          <div>
+            <h3>Top Topics &amp; Tools</h3>
+            <div class="meta">Keyword-based (fast, local, and privacy-friendly)</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag tools">Tools</span>
+            <span class="tag work">Work</span>
+          </div>
+        </header>
+
+        <div class="list" id="topicsList">
+          <div class="item">
+            <div class="dot a"></div>
+            <div>
+              <b>Import to see your real top keywords</b>
+              <span>We’ll extract common terms (English + Hebrew), plus “tool mentions” like GitHub, Suno, ElevenLabs, etc.</span>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:12px;">
+          <summary>Privacy note <span class="chev">🔒</span></summary>
+          <div class="detailBody">
+            Everything runs locally in your browser. This page doesn’t send your data anywhere.
+            (If you later host it publicly, don’t import private exports on a shared machine.)
+          </div>
+        </details>
+      </article>
+
+      <!-- Card 5 -->
+      <article class="card filterable" data-tags="life work creative">
+        <header>
+          <div>
+            <h3>Trends &amp; Predictions</h3>
+            <div class="meta">Auto-updates based on what your export reveals</div>
+          </div>
+          <div class="tagrow">
+            <span class="tag life">Life</span>
+            <span class="tag work">Work</span>
+            <span class="tag creative">Creative</span>
+          </div>
+        </header>
+
+        <div class="list" id="predictionsList">
+          <div class="item">
+            <div class="dot c"></div>
+            <div>
+              <b>Waiting for import…</b>
+              <span>Once imported, this becomes a grounded read on your trajectory (frequency, depth, topic drift).</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // -------------------------
+    // Helpers
+    // -------------------------
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+    function pct(x){ return Math.round(clamp01(x) * 100) + "%"; }
+    function fmtInt(n){ return (n ?? 0).toLocaleString(); }
+    function fmtDate(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const day = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${day}`;
+    }
+    function isHebrew(text){
+      return /[\u0590-\u05FF]/.test(text);
+    }
+    function wordsCount(s){
+      if(!s) return 0;
+      const t = s.trim();
+      if(!t) return 0;
+      return t.split(/\s+/).length;
+    }
+
+    // -------------------------
+    // Toast
+    // -------------------------
+    const toast = $("#toast");
+    function showToast(html, ms=2600){
+      toast.innerHTML = html;
+      toast.style.display = "block";
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.style.display = "none", ms);
+    }
+
+    // -------------------------
+    // Confetti
+    // -------------------------
+    const fx = $("#fx");
+    const ctx = fx.getContext("2d");
+    let particles = [];
+    const palette = [[98,246,210],[255,122,217],[255,209,102],[122,167,255],[185,255,106]];
+    function resize(){
+      fx.width = window.innerWidth * devicePixelRatio;
+      fx.height = window.innerHeight * devicePixelRatio;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+    function rand(min, max){ return Math.random() * (max - min) + min; }
+    function confettiBurst(count=120){
+      const x = fx.width * 0.5;
+      const y = fx.height * 0.22;
+      for(let i=0;i<count;i++){
+        const col = palette[Math.floor(Math.random()*palette.length)];
+        particles.push({
+          x, y,
+          vx: rand(-4.5, 4.5) * devicePixelRatio,
+          vy: rand(-7.5, -2.5) * devicePixelRatio,
+          g: rand(0.12, 0.22) * devicePixelRatio,
+          r: rand(2.0, 5.2) * devicePixelRatio,
+          a: 1,
+          rot: rand(0, Math.PI),
+          vr: rand(-0.18, 0.18),
+          col
+        });
+      }
+    }
+    function tick(){
+      ctx.clearRect(0,0,fx.width,fx.height);
+      particles = particles.filter(p => p.a > 0.02);
+      for(const p of particles){
+        p.vy += p.g;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        p.a *= 0.985;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = p.a;
+        ctx.fillStyle = `rgb(${p.col[0]},${p.col[1]},${p.col[2]})`;
+        ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r);
+        ctx.restore();
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+    document.addEventListener("keydown", (e) => {
+      if(e.key.toLowerCase() === "d"){ confettiBurst(160); showToast(`Dor mode activated 🎉`); }
+    });
+
+    // -------------------------
+    // Filters
+    // -------------------------
+    const chips = $$(".chip[data-filter]");
+    const filterables = $$(".filterable");
+    let currentFilter = "all";
+    function setFilter(next){
+      currentFilter = next;
+      chips.forEach(c => c.classList.toggle("active", c.dataset.filter === next));
+      filterables.forEach(el => {
+        const tags = (el.dataset.tags || "").split(/\s+/).filter(Boolean);
+        const show = (next === "all") || tags.includes(next);
+        el.style.display = show ? "" : "none";
+      });
+      showToast(`<strong>Filter:</strong> ${next === "all" ? "All vibes" : next}`);
+    }
+    chips.forEach(ch => {
+      ch.addEventListener("click", () => setFilter(ch.dataset.filter));
+      ch.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){ e.preventDefault(); setFilter(ch.dataset.filter); }
+      });
+    });
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "/"){ e.preventDefault(); chips[0]?.focus(); showToast(`Tip: use <code>Tab</code> then <code>Enter</code> to switch filters.`); }
+    });
+    setFilter("all");
+
+    // -------------------------
+    // Gauges
+    // -------------------------
+    function setGauge(id, pct01){
+      const circ = 113.1;
+      const off = circ * (1 - clamp01(pct01));
+      const el = document.getElementById(id);
+      if(el) el.style.strokeDashoffset = off.toFixed(1);
+    }
+
+    // -------------------------
+    // Edit mode + persistence
+    // -------------------------
+    const KEY_UI = "dorgpt_ui_state_v2";
+    let editMode = false;
+
+    function persistUI(){
+      const payload = {
+        heroTitle: $("#heroTitle").textContent.trim(),
+        heroSummary: $("#heroSummary").textContent.trim(),
+        vibeValue: $("#vibeValue").textContent.trim(),
+        primaryMode: $("#primaryMode").textContent.trim()
+      };
+      localStorage.setItem(KEY_UI, JSON.stringify(payload));
+    }
+    function restoreUI(){
+      try{
+        const raw = localStorage.getItem(KEY_UI);
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        if(data.heroTitle) $("#heroTitle").textContent = data.heroTitle;
+        if(data.heroSummary) $("#heroSummary").textContent = data.heroSummary;
+        if(data.vibeValue) $("#vibeValue").textContent = data.vibeValue;
+        if(data.primaryMode) $("#primaryMode").textContent = data.primaryMode;
+      }catch(_){}
+    }
+    restoreUI();
+
+    function setEditMode(on){
+      editMode = on;
+      $("#btnEdit").textContent = on ? "Done" : "Edit Mode";
+      const editable = ["#heroTitle","#heroSummary","#vibeValue","#primaryMode"];
+      editable.forEach(sel => {
+        const el = $(sel);
+        el.contentEditable = on ? "true" : "false";
+        el.spellcheck = false;
+        el.style.outline = on ? "2px dashed rgba(255,255,255,.22)" : "none";
+        el.style.padding = on ? "6px 8px" : "";
+        el.style.borderRadius = on ? "14px" : "";
+      });
+      showToast(on ? `Edit mode on. Click text to edit. <code>Esc</code> exits.` : `Saved ✅`);
+      persistUI();
+    }
+    $("#btnEdit").addEventListener("click", () => setEditMode(!editMode));
+    document.addEventListener("keydown", (e) => { if(e.key === "Escape" && editMode) setEditMode(false); });
+    ["#heroTitle","#heroSummary","#vibeValue","#primaryMode"].forEach(sel => {
+      $(sel).addEventListener("input", persistUI);
+    });
+
+    // -------------------------
+    // Spark (still fun)
+    // -------------------------
+    const sparks = [
+      { vibe: "Modest confidence, maximum craft", mode: "Co-designer & co-strategist" },
+      { vibe: "Systems + soul + a dash of chaos", mode: "Thinking partner & creative director" },
+      { vibe: "High standards, kind delivery", mode: "UX mentor & tone polisher" },
+      { vibe: "Build-first brain (with taste)", mode: "Maker & messenger" },
+      { vibe: "Clarity hunter, vibe keeper", mode: "Educator & producer" }
+    ];
+    $("#btnSpark").addEventListener("click", () => {
+      const pick = sparks[Math.floor(Math.random() * sparks.length)];
+      $("#vibeValue").textContent = pick.vibe;
+      $("#primaryMode").textContent = pick.mode;
+      $("#statsPill").textContent = $("#statsPill").textContent.includes("Real") ? "Stats: Real (plus Spark)" : $("#statsPill").textContent;
+      confettiBurst(80);
+      showToast(`✨ Sparked: <strong>${pick.vibe}</strong>`);
+      persistUI();
+    });
+
+    // -------------------------
+    // Reset
+    // -------------------------
+    $("#btnReset").addEventListener("click", () => {
+      localStorage.removeItem(KEY_UI);
+      localStorage.removeItem("dorgpt_stats_cache_v1");
+      location.reload();
+    });
+
+    // -------------------------
+    // Import modal
+    // -------------------------
+    const modal = $("#modal");
+    const filePick = $("#filePick");
+    const dropzone = $("#dropzone");
+    const btnParse = $("#btnParse");
+    const fileMeta = $("#fileMeta");
+    const importStatus = $("#importStatus");
+    let selectedFile = null;
+
+    function openModal(){ modal.style.display = "block"; }
+    function closeModal(){ modal.style.display = "none"; }
+    $("#btnImport").addEventListener("click", openModal);
+    $("#btnCloseModal").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if(e.target === modal) closeModal(); });
+
+    function setSelectedFile(f){
+      selectedFile = f;
+      if(!f){
+        btnParse.disabled = true;
+        importStatus.textContent = "No file selected yet.";
+        fileMeta.textContent = "—";
+        return;
+      }
+      btnParse.disabled = false;
+      importStatus.textContent = "Ready to parse locally.";
+      fileMeta.textContent = `${f.name} · ${fmtInt(f.size)} bytes`;
+    }
+
+    filePick.addEventListener("change", (e) => setSelectedFile(e.target.files?.[0] || null));
+
+    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "rgba(98,246,210,.35)"; });
+    dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "rgba(255,255,255,.18)"; });
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "rgba(255,255,255,.18)";
+      const f = e.dataTransfer.files?.[0];
+      if(f) setSelectedFile(f);
+    });
+
+    // -------------------------
+    // ChatGPT Export parsing
+    // -------------------------
+    function extractTextFromMessage(msg){
+      try{
+        if(!msg) return "";
+        const c = msg.content;
+        if(!c) return "";
+        if(Array.isArray(c.parts)) return c.parts.filter(Boolean).join("\n");
+        if(typeof c.text === "string") return c.text;
+        // some exports store: content: { content_type: "multimodal_text", parts:[...] }
+        if(c.content_type && Array.isArray(c.parts)) return c.parts.join("\n");
+      }catch(_){}
+      return "";
+    }
+
+    function linearizeConversation(conv){
+      // Typical structure: conv.mapping (nodes), conv.current_node, nodes have parent pointers.
+      const nodes = conv?.mapping;
+      const cur = conv?.current_node;
+      if(!nodes || !cur || !nodes[cur]) return [];
+
+      const chain = [];
+      let n = nodes[cur];
+      const seen = new Set();
+      while(n && !seen.has(n.id)){
+        seen.add(n.id);
+        if(n.message) chain.push(n);
+        const parentId = n.parent;
+        n = parentId ? nodes[parentId] : null;
+      }
+      chain.reverse();
+
+      return chain.map(node => {
+        const role = node?.message?.author?.role || "unknown";
+        const create_time = node?.message?.create_time || node?.message?.create_time || null;
+        const txt = extractTextFromMessage(node.message);
+        return {
+          role,
+          create_time: typeof create_time === "number" ? create_time : null,
+          text: txt || ""
+        };
+      }).filter(m => m.text.trim().length > 0 && (m.role === "user" || m.role === "assistant"));
+    }
+
+    function safeJsonParse(str){
+      try{ return JSON.parse(str); }catch(_){ return null; }
+    }
+
+    async function readAsText(file){
+      return await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ""));
+        r.onerror = () => reject(r.error);
+        r.readAsText(file);
+      });
+    }
+
+    async function loadConversationsFromFile(file){
+      const name = (file?.name || "").toLowerCase();
+      if(name.endsWith(".json")){
+        const txt = await readAsText(file);
+        const data = safeJsonParse(txt);
+        if(Array.isArray(data)) return data; // sometimes it's directly the array
+        if(Array.isArray(data?.conversations)) return data.conversations;
+        // ChatGPT export commonly: conversations.json is array
+        return data;
+      }
+
+      if(name.endsWith(".zip")){
+        if(typeof JSZip === "undefined"){
+          throw new Error("JSZip not available. Upload conversations.json instead (offline).");
+        }
+        const buf = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(buf);
+        // Find conversations.json (common)
+        const candidates = Object.keys(zip.files).filter(p => p.toLowerCase().endsWith("conversations.json"));
+        if(!candidates.length){
+          throw new Error("Could not find conversations.json inside the zip.");
+        }
+        const jsonStr = await zip.files[candidates[0]].async("string");
+        const data = safeJsonParse(jsonStr);
+        return data;
+      }
+
+      throw new Error("Unsupported file type. Please upload .zip or conversations.json");
+    }
+
+    // -------------------------
+    // Analysis: compute stats + inferred categories
+    // -------------------------
+    const STOP_EN = new Set([
+      "the","a","an","and","or","to","of","in","for","on","with","is","it","this","that","i","you","we","they",
+      "me","my","your","our","are","was","were","be","been","as","at","by","from","but","not","so","if","then",
+      "can","could","would","should","do","does","did","what","how","why","when","where","also","just","like",
+      "im","it's","its","dont","can't","cant","won't","wont","very","more","most","make","please"
+    ]);
+    const STOP_HE = new Set([
+      "של","על","עם","מה","איך","למה","מתי","איפה","זה","זאת","אני","אתה","את","אנחנו","הם","הן","כן","לא",
+      "גם","כי","אם","אז","כמו","רק","עוד","יותר","מאוד","אפשר","צריך","תוכל","תוכלי","בבקשה","האם"
+    ]);
+
+    const SIGNALS = {
+      creative: [
+        "suno","lyrics","song","melody","chords","guitar","piano","rhodes","wurlitzer","drums","verse","chorus",
+        "prompt","style prompt","music","beat","solo","harmonies","synth","riff","mix","recording",
+        "מילים","שיר","לחן","מלודיה","אקורדים","גיטרה","פסנתר","בית","פזמון","סולו","פרומפט"
+      ],
+      work: [
+        "ux","product","workshop","training","module","e-learning","instructional","slides","presentation",
+        "deck","stakeholder","strategy","brief","case study","wireframe","prototype","nngroup","heuristics",
+        "סדנה","הכשרה","תוכן","למידה","מצגת","שקופיות","מדריך","עיצוב","חוויית משתמש","מוצר","תוכנית"
+      ],
+      life: [
+        "relationship","dating","therapy","psychologist","confidence","self esteem","anxiety","feel","habit","smoking",
+        "friend","message","whatsapp","lonely",
+        "קשר","דייט","טיפול","פסיכולוג","ביטחון עצמי","חרדה","מרגיש","הרגל","עישון","חבר","הודעה"
+      ],
+      tools: [
+        "github","mermaid","elevenlabs","tts","android","react","tailwind","framer","wix","api","csv","json","html","css","javascript",
+        "github pages","github.io","sheets","ppt","powerpoint",
+        "גיטהאב","מרמיד","אלבןלאבס","אנדרואיד","ריאקט","טיילווינד","פריימר","וויקס","אקסל","טבלה"
+      ],
+      clarity: [
+        "explain","simplify","make it clearer","rewrite","humanize","less ai","tone","make it readable","structure",
+        "סביר","פשוט","להסביר","תסביר","תפשט","שכתוב","האנש","פחות ai","טון","קריא","מבנה"
+      ]
+    };
+
+    function tokenize(text){
+      const t = (text || "").toLowerCase()
+        .replace(/https?:\/\/\S+/g, " ")
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if(!t) return [];
+      return t.split(" ").filter(w => w.length >= 3);
+    }
+
+    function topN(map, n){
+      return Array.from(map.entries())
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,n);
+    }
+
+    function signalScore(text, arr){
+      const low = (text || "").toLowerCase();
+      let hit = 0;
+      for(const s of arr){
+        if(low.includes(s)) hit++;
+      }
+      return hit;
+    }
+
+    function analyzeConversations(conversations){
+      const allMessages = [];
+      const perMonth = new Map(); // yyyy-mm -> count
+      const perMonthUser = new Map(); // yyyy-mm -> user count
+      const perDay = new Set();
+      let minT = Infinity, maxT = -Infinity;
+
+      let userMsgs = 0, assistantMsgs = 0;
+      let userWords = 0;
+
+      // signal counts (by message)
+      let sigCreative = 0, sigWork = 0, sigLife = 0, sigTools = 0;
+      let clarityHits = 0;
+
+      // signature phrases (user)
+      const sigPhrases = new Map();
+      const keywordCounts = new Map();
+      const toolMentions = new Map();
+
+      // turns / convo stats
+      let totalTurns = 0;
+      let convoWithAny = 0;
+
+      for(const conv of conversations || []){
+        const msgs = linearizeConversation(conv);
+        if(!msgs.length) continue;
+        convoWithAny++;
+        totalTurns += msgs.length;
+
+        for(const m of msgs){
+          allMessages.push(m);
+
+          if(typeof m.create_time === "number"){
+            minT = Math.min(minT, m.create_time);
+            maxT = Math.max(maxT, m.create_time);
+            const d = new Date(m.create_time * 1000);
+            perDay.add(fmtDate(d));
+            const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+            perMonth.set(ym, (perMonth.get(ym) || 0) + 1);
+            if(m.role === "user"){
+              perMonthUser.set(ym, (perMonthUser.get(ym) || 0) + 1);
+            }
+          }
+
+          const text = m.text || "";
+          const tok = tokenize(text);
+
+          // Keyword frequency (both roles, but user-weighted via later display)
+          for(const w of tok){
+            const isHe = isHebrew(w);
+            if(isHe){
+              if(STOP_HE.has(w)) continue;
+            }else{
+              if(STOP_EN.has(w)) continue;
+            }
+            keywordCounts.set(w, (keywordCounts.get(w) || 0) + 1);
+          }
+
+          // Signals
+          const c = signalScore(text, SIGNALS.creative);
+          const w = signalScore(text, SIGNALS.work);
+          const l = signalScore(text, SIGNALS.life);
+          const t = signalScore(text, SIGNALS.tools);
+          const cl = signalScore(text, SIGNALS.clarity);
+
+          if(c>0) sigCreative++;
+          if(w>0) sigWork++;
+          if(l>0) sigLife++;
+          if(t>0) sigTools++;
+          if(cl>0) clarityHits++;
+
+          // Tool mentions
+          if(t>0){
+            for(const term of ["suno","elevenlabs","github","mermaid","android","react","tailwind","wix","powerpoint","ppt","csv","json","html","css","javascript"]){
+              if(text.toLowerCase().includes(term)){
+                toolMentions.set(term, (toolMentions.get(term) || 0) + 1);
+              }
+            }
+          }
+
+          // User-only metrics
+          if(m.role === "user"){
+            userMsgs++;
+            userWords += wordsCount(text);
+
+            // signature request patterns
+            const low = text.toLowerCase();
+            const patterns = [
+              ["Rewrite / humanize", ["humanize","less ai","rewrite","tone"]],
+              ["Make it clearer", ["simplify","explain","clearer","clarify","להסביר","תסביר","פשוט","תפשט"]],
+              ["Give options", ["3 options","4 options","options","variants","אפשרויות"]],
+              ["Make a prompt", ["prompt","style prompt","פרומפט"]],
+              ["Build a diagram", ["mermaid","diagram","flow","chart","תרשים"]],
+              ["Browser-first build", ["github pages","in browser","browser","canvas","index.html"]],
+            ];
+            for(const [label, arr] of patterns){
+              for(const p of arr){
+                if(low.includes(p)){
+                  sigPhrases.set(label, (sigPhrases.get(label) || 0) + 1);
+                  break;
+                }
+              }
+            }
+          } else if(m.role === "assistant") {
+            assistantMsgs++;
+          }
+        }
+      }
+
+      const totalMsgs = userMsgs + assistantMsgs;
+      const avgTurns = convoWithAny ? (totalTurns / convoWithAny) : 0;
+
+      // normalize gauges (simple, interpretable)
+      // iteration: avgTurns mapped ~ 6 turns => 50%, 14 turns => 90%
+      const iter = clamp01((avgTurns - 4) / 12);
+
+      // creative/work/life/tools density per message
+      const denom = Math.max(1, totalMsgs);
+      const creative = clamp01(sigCreative / denom);
+      const work = clamp01(sigWork / denom);
+      const life = clamp01(sigLife / denom);
+      const tools = clamp01(sigTools / denom);
+
+      const clarity = clamp01(clarityHits / denom);
+      const structure = clamp01(work * 0.6 + tools * 0.4);
+
+      // derive vibe + primary mode
+      const buckets = [
+        ["Creative Director", creative],
+        ["Systems Builder", work],
+        ["Tool-Chainer", tools],
+        ["Reflective Strategist", life],
+      ].sort((a,b)=>b[1]-a[1]);
+
+      const primary = buckets[0]?.[0] || "Co-creator";
+      const vibe = (() => {
+        if(iter > 0.75 && clarity > 0.45) return "High iteration, clarity-first";
+        if(creative > 0.45 && tools > 0.30) return "Creative pipelines, not random sparks";
+        if(work > 0.45 && structure > 0.40) return "Systems + delivery energy";
+        if(life > 0.35 && clarity > 0.30) return "Reflective, precise, human-toned";
+        return "Balanced builder with taste";
+      })();
+
+      // time range
+      let range = "—";
+      if(minT !== Infinity && maxT !== -Infinity){
+        const a = new Date(minT * 1000);
+        const b = new Date(maxT * 1000);
+        range = `${a.getFullYear()}-${String(a.getMonth()+1).padStart(2,"0")} → ${b.getFullYear()}-${String(b.getMonth()+1).padStart(2,"0")}`;
+      }
+
+      // build sorted month array
+      const months = Array.from(perMonth.keys()).sort();
+      const monthCounts = months.map(m => perMonth.get(m) || 0);
+      const monthUserShare = months.map(m => {
+        const total = perMonth.get(m) || 0;
+        const u = perMonthUser.get(m) || 0;
+        return total ? (u/total) : 0;
+      });
+
+      return {
+        totalConvos: convoWithAny,
+        totalMsgs,
+        userMsgs,
+        assistantMsgs,
+        userWords,
+        activeDays: perDay.size,
+        avgTurns,
+        range,
+        gauges: { iter, creative, clarity, structure },
+        densities: { creative, work, life, tools, clarity },
+        primary,
+        vibe,
+        topKeywords: topN(keywordCounts, 10),
+        topTools: topN(toolMentions, 8),
+        signature: topN(sigPhrases, 6),
+        timeline: { months, monthCounts, monthUserShare }
+      };
+    }
+
+    // -------------------------
+    // Render: update dashboard
+    // -------------------------
+    function drawTimeline(chart, months, counts, userShare){
+      const canvas = chart;
+      const c = canvas.getContext("2d");
+      const W = canvas.width, H = canvas.height;
+      c.clearRect(0,0,W,H);
+
+      // background grid
+      c.globalAlpha = 1;
+      c.fillStyle = "rgba(255,255,255,.02)";
+      c.fillRect(0,0,W,H);
+
+      const pad = 18;
+      const innerW = W - pad*2;
+      const innerH = H - pad*2;
+
+      // axes
+      c.strokeStyle = "rgba(255,255,255,.08)";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(pad, pad);
+      c.lineTo(pad, H-pad);
+      c.lineTo(W-pad, H-pad);
+      c.stroke();
+
+      if(!months.length){
+        c.fillStyle = "rgba(255,255,255,.55)";
+        c.font = "14px ui-sans-serif, system-ui";
+        c.fillText("Import data to draw timeline", pad+10, H/2);
+        return;
+      }
+
+      const maxV = Math.max(...counts, 1);
+      const n = months.length;
+      const step = innerW / Math.max(1, n-1);
+
+      // line: messages
+      c.strokeStyle = "rgba(98,246,210,.85)";
+      c.lineWidth = 3;
+      c.beginPath();
+      for(let i=0;i<n;i++){
+        const x = pad + step*i;
+        const y = pad + innerH - (counts[i]/maxV)*innerH;
+        if(i===0) c.moveTo(x,y); else c.lineTo(x,y);
+      }
+      c.stroke();
+
+      // area fill
+      c.fillStyle = "rgba(98,246,210,.12)";
+      c.beginPath();
+      for(let i=0;i<n;i++){
+        const x = pad + step*i;
+        const y = pad + innerH - (counts[i]/maxV)*innerH;
+        if(i===0) c.moveTo(x,y); else c.lineTo(x,y);
+      }
+      c.lineTo(pad + step*(n-1), pad+innerH);
+      c.lineTo(pad, pad+innerH);
+      c.closePath();
+      c.fill();
+
+      // dots
+      c.fillStyle = "rgba(98,246,210,.95)";
+      for(let i=0;i<n;i++){
+        const x = pad + step*i;
+        const y = pad + innerH - (counts[i]/maxV)*innerH;
+        c.beginPath();
+        c.arc(x,y,4,0,Math.PI*2);
+        c.fill();
+      }
+
+      // bars: user share (scaled)
+      for(let i=0;i<n;i++){
+        const x = pad + step*i;
+        const h = userShare[i] * innerH;
+        c.fillStyle = "rgba(255,122,217,.20)";
+        c.fillRect(x-3, pad+innerH-h, 6, h);
+      }
+
+      // label ends
+      c.fillStyle = "rgba(255,255,255,.55)";
+      c.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas";
+      c.fillText(months[0], pad, pad-4);
+      c.fillText(months[n-1], W-pad-70, pad-4);
+    }
+
+    function updateUI(stats){
+      // Pills
+      $("#statsPill").textContent = "Stats: Real";
+      $("#rangePill").textContent = `Range: ${stats.range}`;
+
+      // Hero vibe
+      $("#vibeBadge").textContent = "real";
+      $("#vibeValue").textContent = stats.vibe;
+      $("#vibeHint").textContent = `Based on ${fmtInt(stats.totalMsgs)} messages across ${fmtInt(stats.totalConvos)} conversations.`;
+      $("#primarySub").textContent = "(computed)";
+      $("#primaryMode").textContent = stats.primary;
+      $("#primaryHint").textContent = `Top density signals: creative ${pct(stats.densities.creative)}, work ${pct(stats.densities.work)}, tools ${pct(stats.densities.tools)}.`;
+
+      // Gauges
+      setGauge("g1", stats.gauges.iter);
+      setGauge("g2", stats.gauges.creative);
+      setGauge("g3", stats.gauges.clarity);
+      setGauge("g4", stats.gauges.structure);
+
+      $("#g1v").textContent = pct(stats.gauges.iter);
+      $("#g2v").textContent = pct(stats.gauges.creative);
+      $("#g3v").textContent = pct(stats.gauges.clarity);
+      $("#g4v").textContent = pct(stats.gauges.structure);
+
+      $("#g1s").textContent = `Avg turns / convo: ${stats.avgTurns.toFixed(1)} (normalized).`;
+      $("#g2s").textContent = `Creative-signal messages: ${pct(stats.densities.creative)} of all messages.`;
+      $("#g3s").textContent = `Clarity/Rewrite signals: ${pct(stats.densities.clarity)} of all messages.`;
+      $("#g4s").textContent = `Work+Tools structure blend (normalized).`;
+
+      // Key stats
+      $("#st_convos").textContent = fmtInt(stats.totalConvos);
+      $("#st_msgs").textContent = fmtInt(stats.totalMsgs);
+      $("#st_ratio").textContent = `${fmtInt(stats.userMsgs)} user · ${fmtInt(stats.assistantMsgs)} assistant`;
+      $("#st_words").textContent = fmtInt(stats.userWords);
+      $("#st_days").textContent = fmtInt(stats.activeDays);
+
+      // Timeline chart
+      const chart = $("#timelineChart");
+      drawTimeline(chart, stats.timeline.months, stats.timeline.monthCounts, stats.timeline.monthUserShare);
+
+      // DNA facts (real)
+      const dna = $("#dnaFacts");
+      dna.innerHTML = "";
+      const facts = [
+        { dot:"a", title:"Conversation depth", body:`Average turns per conversation: <b>${stats.avgTurns.toFixed(1)}</b>.` },
+        { dot:"d", title:"User share", body:`User share by month is drawn as pink bars. (Higher = more back-and-forth prompting.)` },
+        { dot:"b", title:"Most active month", body:(() => {
+          const months = stats.timeline.months;
+          if(!months.length) return "—";
+          let bestI = 0;
+          for(let i=1;i<months.length;i++) if(stats.timeline.monthCounts[i] > stats.timeline.monthCounts[bestI]) bestI = i;
+          return `Peak month: <b>${months[bestI]}</b> with <b>${fmtInt(stats.timeline.monthCounts[bestI])}</b> messages.`;
+        })()},
+      ];
+      for(const f of facts){
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `<div class="dot ${f.dot}"></div><div><b>${f.title}</b><span>${f.body}</span></div>`;
+        dna.appendChild(el);
+      }
+
+      // Signature moves
+      const sig = $("#signatureList");
+      sig.innerHTML = "";
+      if(!stats.signature.length){
+        sig.innerHTML = `<div class="item"><div class="dot b"></div><div><b>No signature patterns found</b><span>(This can happen if your export is mostly non-text or very short.)</span></div></div>`;
+      } else {
+        stats.signature.forEach(([label, count], i) => {
+          const dot = ["b","d","a","c","e"][i % 5];
+          const el = document.createElement("div");
+          el.className = "item";
+          el.innerHTML = `<div class="dot ${dot}"></div><div><b>${label}</b><span>${fmtInt(count)} matched messages</span></div>`;
+          sig.appendChild(el);
+        });
+      }
+
+      // Topics & tools
+      const topics = $("#topicsList");
+      topics.innerHTML = "";
+      const topTools = stats.topTools.length ? stats.topTools.map(([k,v]) => `${k} (${fmtInt(v)})`).join(" · ") : "—";
+      const toolEl = document.createElement("div");
+      toolEl.className = "item";
+      toolEl.innerHTML = `<div class="dot a"></div><div><b>Top tool mentions</b><span>${topTools}</span></div>`;
+      topics.appendChild(toolEl);
+
+      const kwEl = document.createElement("div");
+      kwEl.className = "item";
+      kwEl.innerHTML = `<div class="dot d"></div><div><b>Top keywords</b><span>${stats.topKeywords.map(([k,v]) => `${k} (${fmtInt(v)})`).join(" · ")}</span></div>`;
+      topics.appendChild(kwEl);
+
+      // Predictions (grounded)
+      const pred = $("#predictionsList");
+      pred.innerHTML = "";
+      const preds = [];
+      if(stats.gauges.iter > 0.65) preds.push(["a","High iteration loop", "You refine a lot — you’ll benefit from “versioned templates” (prompt packs) to reuse your best patterns."]);
+      if(stats.densities.tools > 0.25) preds.push(["d","Toolchain builder", "Expect more browser-first projects: single-file tools, GitHub Pages, small interactive dashboards."]);
+      if(stats.densities.creative > 0.35) preds.push(["b","Creative output stays central", "Your creative + constraints style points toward more shareable artifacts (songs, prompts, mini-apps)."]);
+      if(stats.densities.work > 0.35) preds.push(["e","Work systems deepen", "More modular training content: units, checklists, facilitation scripts, and measurable learning outcomes."]);
+      if(!preds.length) preds.push(["c","Balanced trajectory", "Your usage is evenly spread — you’ll likely keep mixing work, creativity, and life support in a steady rhythm."]);
+
+      preds.slice(0,4).forEach(([dot,title,body]) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `<div class="dot ${dot}"></div><div><b>${title}</b><span>${body}</span></div>`;
+        pred.appendChild(el);
+      });
+
+      // Subline
+      $("#subline").textContent = `Real Stats loaded · ${fmtInt(stats.totalMsgs)} messages · ${fmtInt(stats.activeDays)} active days`;
+
+      // Celebrate
+      confettiBurst(140);
+      showToast(`Imported ✅ Built dashboard from <strong>${fmtInt(stats.totalMsgs)}</strong> messages.`);
+    }
+
+    // -------------------------
+    // Stats cache (optional)
+    // -------------------------
+    const KEY_STATS = "dorgpt_stats_cache_v1";
+    function saveStats(stats){
+      try{ localStorage.setItem(KEY_STATS, JSON.stringify(stats)); }catch(_){}
+    }
+    function loadStats(){
+      try{
+        const raw = localStorage.getItem(KEY_STATS);
+        if(!raw) return null;
+        return JSON.parse(raw);
+      }catch(_){ return null; }
+    }
+    const cached = loadStats();
+    if(cached && cached.totalMsgs){
+      updateUI(cached);
+      $("#heroNote").textContent = "Loaded cached Real Stats. Import again anytime to refresh.";
+    } else {
