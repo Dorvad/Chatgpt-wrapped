@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChatGPT Wrapped — Dor</title>
+  <meta name="description" content="דשבורד ChatGPT Wrapped אישי בסגנון Spotify Wrapped" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="bg-noise" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+      <div class="brand-txt">
+        <div class="brand-title">ChatGPT Wrapped</div>
+        <div class="brand-sub" id="brandSub">טעינה…</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn ghost" id="btnMemoryMode" title="מציג תובנות מהזיכרון והשיחות האחרונות">Memory Mode</button>
+      <button class="btn ghost" id="btnDataMode" title="מעלה JSON ומחשב סטטיסטיקות מהדאטה">Data Import</button>
+
+      <label class="btn" for="fileInput" id="fileLabel" title="בחר קובץ JSON">
+        העלאת JSON
+      </label>
+      <input id="fileInput" type="file" accept=".json,application/json" hidden />
+
+      <button class="btn ghost" id="btnShare" title="מעתיק לינק לשיתוף">שיתוף</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="wrap">
+    <!-- HERO -->
+    <section class="panel hero" data-panel>
+      <div class="panel-inner">
+        <div class="badge" id="badgeRange">12 חודשים אחרונים</div>
+
+        <h1 class="h1">
+          <span class="shine">Dor</span>,
+          זה ה־Wrapped שלך 💿
+        </h1>
+
+        <p class="lead" id="heroLine">
+          שילוב נדיר של מוצר, תוכן, UX, ויצירתיות עם AI — עם נטייה לדיוק, עיצוב, ובדיקה כפולה של עובדות.
+        </p>
+
+        <div class="hero-grid">
+          <div class="stat card" data-animate="count">
+            <div class="stat-k">סגנון השיחות</div>
+            <div class="stat-v" id="statStyle">—</div>
+            <div class="stat-s" id="statStyleSub">—</div>
+          </div>
+
+          <div class="stat card" data-animate="count">
+            <div class="stat-k">שפות</div>
+            <div class="stat-v" id="statLang">—</div>
+            <div class="stat-s" id="statLangSub">—</div>
+          </div>
+
+          <div class="stat card" data-animate="count">
+            <div class="stat-k">“Signature move”</div>
+            <div class="stat-v" id="statSig">—</div>
+            <div class="stat-s" id="statSigSub">—</div>
+          </div>
+        </div>
+
+        <div class="cta-row">
+          <button class="btn big" id="btnStart">בוא נצלול</button>
+          <button class="btn big ghost" id="btnDownload">שמירת Snapshot</button>
+        </div>
+
+        <div class="hint">
+          גלול ⟵⟶? לא 🙂 כאן זה <b>גלילה אנכית</b>. כל מסך הוא “סיפור”.
+        </div>
+      </div>
+    </section>
+
+    <!-- THEMES -->
+    <section class="panel" data-panel>
+      <div class="panel-inner">
+        <h2 class="h2">הטופ 5 שלך השנה</h2>
+        <p class="p" id="themesSubtitle">מבוסס על הזיכרון והשיחות האחרונות שנגישות לי כאן.</p>
+
+        <div class="cards-grid" id="themesGrid"></div>
+
+        <div class="divider"></div>
+
+        <div class="row two">
+          <div class="card">
+            <div class="card-title">מפת תחומים</div>
+            <div class="card-sub">חלוקה משוערת לפי סוג הבקשות והפרויקטים שחזרו שוב ושוב.</div>
+            <div class="donut" id="donutWrap" aria-label="תרשים חלוקה לפי תחומים">
+              <canvas id="donutCanvas" width="520" height="520"></canvas>
+              <div class="donut-center">
+                <div class="donut-big" id="donutBig">100%</div>
+                <div class="donut-small">Dor energy</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">הווייב המרכזי</div>
+            <div class="vibe" id="vibeBox"></div>
+
+            <div class="microstats" id="microStats"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="panel" data-panel>
+      <div class="panel-inner">
+        <h2 class="h2">הפרויקטים שהגדירו את השנה</h2>
+        <p class="p">אלו לא “סתם שאלות” — זה אשכרה קו עלילה.</p>
+
+        <div class="timeline" id="timeline"></div>
+
+        <div class="divider"></div>
+
+        <div class="row two">
+          <div class="card">
+            <div class="card-title">Top recurring projects</div>
+            <div class="list" id="projectsList"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">הכלים שהופיעו שוב ושוב</div>
+            <div class="chips" id="chipsTools"></div>
+            <div class="spacer"></div>
+            <div class="card-sub">
+              טיפוס Dor קלאסי: בקשה לתוצאה “מוכנה להדבקה”, עם רף אסתטי גבוה ועם אנימציות מספקות.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LANGUAGE + STYLE -->
+    <section class="panel" data-panel>
+      <div class="panel-inner">
+        <h2 class="h2">איך אתה מדבר עם AI</h2>
+
+        <div class="row two">
+          <div class="card">
+            <div class="card-title">הקול שלך</div>
+            <div class="voice" id="voiceCards"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">מילים שמסגירות אותך</div>
+            <div class="wordcloud" id="wordCloud"></div>
+            <div class="card-sub">
+              (לא ניתוח לשוני מלא—רק סיכום טריגרים שחוזרים בזיכרון השיחות.)
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="card">
+          <div class="card-title">“Dor Wrapped Moments”</div>
+          <div class="moments" id="moments"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMPORT -->
+    <section class="panel" data-panel>
+      <div class="panel-inner">
+        <h2 class="h2">Data Import (אופציונלי)</h2>
+        <p class="p">
+          אם תרצה דיוק “כמו Spotify באמת” — העלה JSON, והדשבורד ינסה להפיק סטטיסטיקות.
+          כרגע הוא עובד ב־Memory Mode (אמיתי, אבל לא מבוסס על כל חשבון).
+        </p>
+
+        <div class="row two">
+          <div class="card">
+            <div class="card-title">מה זה מקבל?</div>
+            <div class="card-sub">
+              כל JSON שיש בו טקסט שיחות (כמו “conversations.json” או מבנה דומה).
+              אם המבנה שונה — הדשבורד עדיין ינסה “לחלץ טקסט” בצורה סובלנית.
+            </div>
+            <div class="codebox" dir="ltr">
+              <pre id="importHelp"></pre>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">סטטוס</div>
+            <div class="import-status" id="importStatus">
+              <div class="pill">מצב: <b id="modeLabel">Memory Mode</b></div>
+              <div class="pill">שיחות שטופלו: <b id="convCount">—</b></div>
+              <div class="pill">הודעות שטופלו: <b id="msgCount">—</b></div>
+            </div>
+
+            <div class="divider small"></div>
+
+            <button class="btn big" id="btnTryDemo">טען דאטה דמו</button>
+            <button class="btn big ghost" id="btnReset">איפוס</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="card footer">
+          <div class="footer-title">הערת פרטיות</div>
+          <div class="footer-sub">
+            כל העיבוד מתרחש בדפדפן שלך. אם אתה מעלה JSON — הוא לא נשלח לשום מקום.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./data-memory.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
